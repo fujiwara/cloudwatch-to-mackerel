@@ -14,3 +14,4 @@
 .envrc
 *~
 cmd/cw2mkr/cw2mkr
+dist/*
