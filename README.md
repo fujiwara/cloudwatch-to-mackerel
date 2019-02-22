@@ -80,7 +80,7 @@ See [godoc](https://godoc.org/github.com/fujiwara/cloudwatch-to-mackerel/agent).
 
 ### Query format
 
-Same of [MetricDataQuery](https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDataQuery.html) as JSON format.
+Same as [MetricDataQuery](https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDataQuery.html) JSON format.
 
 See also `aws cloudwatch get-metric-data help`.
 
