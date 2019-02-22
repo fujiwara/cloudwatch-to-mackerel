@@ -4,7 +4,7 @@
 
 [godoc]: https://godoc.org/github.com/fujiwara/cloudwatch-to-mackerel
 
-Copy metrics in Amazon CloudWatch to Mackerel.
+Copy metrics from [Amazon CloudWatch](https://aws.amazon.com/cloudwatch/) to [Mackerel](https://mackerel.io).
 
 cloudwatch-to-mackerel agent fetches metrics from Amazon CloudWatch by MetricDataQuery, and post these metrics to Mackerel as service/host metrics.
 
@@ -24,7 +24,9 @@ Usage of cw2mkr:
     	start time(unix)
 ```
 
-Environment variable `AWS_REGION` and `MACKEREL_APIKEY` are required.
+Environment variable `AWS_REGION` and `MACKEREL_APIKEY` are required both.
+
+By the default, end-time is now, start-time is 3 minuts ago.
 
 ## Usage (as library)
 
