@@ -18,6 +18,7 @@ import (
 
 const batchSize = 100
 
+// Option represents agent option.
 type Option struct {
 	StartTime time.Time
 	EndTime   time.Time
@@ -102,7 +103,7 @@ func RunWithContext(ctx context.Context, opt Option) error {
 	}
 
 	serviceMetrics := make(map[string][]*mackerel.MetricValue)
-	hostMetrics := make([]*mackerel.HostMetricValue, 0)
+	hostMetrics := []*mackerel.HostMetricValue{}
 
 	for _, r := range res.MetricDataResults {
 		for i, ts := range r.Timestamps {
