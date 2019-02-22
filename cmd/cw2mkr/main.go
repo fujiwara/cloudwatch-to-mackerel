@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/fujiwara/cloudwatch-to-mackerel/agent"
 	"github.com/hashicorp/logutils"
 )
@@ -47,21 +44,15 @@ func run() error {
 	}
 
 	if len(flag.Args()) != 1 {
-		return errors.New("MetricDataQuery json file requried")
+		return errors.New("an argument MetricDataQuery json file path is requried")
 	}
 	f, err := os.Open(flag.Args()[0])
 	if err != nil {
 		return err
 	}
-	b, err := ioutil.ReadAll(f)
+	opt.Query, err = ioutil.ReadAll(f)
 	if err != nil {
 		return err
 	}
-	return agent.Run(
-		context.Background(),
-		session.Must(session.NewSession(&aws.Config{})),
-		b,
-		os.Getenv("MACKEREL_APIKEY"),
-		opt,
-	)
+	return agent.Run(opt)
 }

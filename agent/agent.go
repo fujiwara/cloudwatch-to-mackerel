@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -15,11 +16,14 @@ import (
 	mackerel "github.com/mackerelio/mackerel-client-go"
 )
 
-const MaxMetricValues = 100
+const batchSize = 100
 
 type Option struct {
 	StartTime time.Time
 	EndTime   time.Time
+	APIKey    string
+	Query     []byte
+	Session   *session.Session
 }
 
 // parse parses a label string as service, hostID, metric name.
@@ -45,14 +49,20 @@ func parseLabel(label string) (string, string, string, error) {
 	return "", "", "", errors.New("invalid label format")
 }
 
-// Run fetches metrics from CloudWatch by MetricDataQuery and post these to Mackerel.
-func Run(ctx context.Context, sess *session.Session, query []byte, apiKey string, opt Option) error {
-	var qs []*cloudwatch.MetricDataQuery
-	if err := json.Unmarshal(query, &qs); err != nil {
-		return errors.Wrap(err, "failed to parse query as MetricDataQuery")
+func validateOption(opt *Option) (err error) {
+	sess := opt.Session
+	if sess == nil {
+		opt.Session, err = session.NewSession(&aws.Config{})
+		if err != nil {
+			return errors.Wrap(err, "failed to new session")
+		}
 	}
-
-	svc := cloudwatch.New(sess)
+	if opt.APIKey == "" {
+		opt.APIKey = os.Getenv("MACKEREL_APIKEY")
+	}
+	if opt.APIKey == "" {
+		return errors.New("Option.APIKey or MACKEREL_APIKEY envrionment variable is required")
+	}
 	now := time.Now()
 	if opt.StartTime.IsZero() {
 		opt.StartTime = now.Add(-3 * time.Minute)
@@ -60,12 +70,33 @@ func Run(ctx context.Context, sess *session.Session, query []byte, apiKey string
 	if opt.EndTime.IsZero() {
 		opt.EndTime = now
 	}
+	return nil
+}
 
-	res, err := svc.GetMetricData(&cloudwatch.GetMetricDataInput{
-		StartTime:         aws.Time(opt.StartTime),
-		EndTime:           aws.Time(opt.EndTime),
-		MetricDataQueries: qs,
-	})
+// Run fetches metrics from CloudWatch by MetricDataQuery and post these to Mackerel.
+func Run(opt Option) error {
+	return RunWithContext(context.Background(), opt)
+}
+
+// RunWithContext fetches metrics from CloudWatch by MetricDataQuery with context and post these to Mackerel.
+func RunWithContext(ctx context.Context, opt Option) error {
+	if err := validateOption(&opt); err != nil {
+		return err
+	}
+	var qs []*cloudwatch.MetricDataQuery
+	if err := json.Unmarshal(opt.Query, &qs); err != nil {
+		return errors.Wrap(err, "failed to parse query as MetricDataQuery")
+	}
+
+	svc := cloudwatch.New(opt.Session)
+	res, err := svc.GetMetricDataWithContext(
+		ctx,
+		&cloudwatch.GetMetricDataInput{
+			StartTime:         aws.Time(opt.StartTime),
+			EndTime:           aws.Time(opt.EndTime),
+			MetricDataQueries: qs,
+		},
+	)
 	if err != nil {
 		return errors.Wrap(err, "failed to GetMetricData")
 	}
@@ -97,14 +128,14 @@ func Run(ctx context.Context, sess *session.Session, query []byte, apiKey string
 		}
 	}
 
-	client := mackerel.NewClient(apiKey)
+	client := mackerel.NewClient(opt.APIKey)
 
 	// post service metrics
 	for service, values := range serviceMetrics {
 		service, values := service, values
 		size := len(values)
-		for i := 0; i < size; i += MaxMetricValues {
-			start, end := i, i+MaxMetricValues
+		for i := 0; i < size; i += batchSize {
+			start, end := i, i+batchSize
 			if size < end {
 				end = size
 			}
@@ -118,8 +149,8 @@ func Run(ctx context.Context, sess *session.Session, query []byte, apiKey string
 
 	// post host metrics
 	size := len(hostMetrics)
-	for i := 0; i < size; i += MaxMetricValues {
-		start, end := i, i+MaxMetricValues
+	for i := 0; i < size; i += batchSize {
+		start, end := i, i+batchSize
 		if size < end {
 			end = size
 		}
