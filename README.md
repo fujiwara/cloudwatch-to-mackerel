@@ -82,7 +82,7 @@ query := []byte(`
 err := agent.Run(agent.Option{Query: query})
 ```
 
-See [godoc](https://godoc.org/github.com/fujiwara/cloudwatch-to-mackerel/agent).
+See [godoc](https://godoc.org/github.com/fujiwara/cloudwatch-to-mackerel/agent) in details.
 
 ### Query format
 
