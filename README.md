@@ -1,5 +1,9 @@
 # cloudwatch-to-mackerel
 
+[![GoDoc](https://godoc.org/github.com/fujiwara/cloudwatch-to-mackerel?status.svg)][godoc]
+
+[godoc]: https://godoc.org/github.com/fujiwara/cloudwatch-to-mackerel
+
 Copy metrics in Amazon CloudWatch to Mackerel.
 
 cloudwatch-to-mackerel agent fetches metrics from Amazon CloudWatch by MetricDataQuery, and post these metrics to Mackerel as service/host metrics.
@@ -28,7 +32,7 @@ Environment variable `AWS_REGION` and `MACKEREL_APIKEY` are required.
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-    "github.com/fujiwara/cloudwatch-to-mackerel/agent"
+	"github.com/fujiwara/cloudwatch-to-mackerel/agent"
 )
 
 // MetricDataQuery JSON
