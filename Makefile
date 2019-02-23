@@ -24,7 +24,7 @@ clean:
 	rm -f cmd/cw2mkr/cw2mkr dist/*
 
 dist: test
-	goxz -pv=$(TAG) -os=darwin,linux -arch=amd64 -d=dist ./cmd/cw2mkr
+	goxz -pv=$(TAG) -os=darwin,linux -build-ldflags="-w -s" -arch=amd64 -d=dist ./cmd/cw2mkr
 
 release: dist
-	ghr -u fujiwara -r cloudwatch-to-mackerel $(TAG) dist/snapshot/
+	ghr -u fujiwara -r cloudwatch-to-mackerel $(TAG) dist/
