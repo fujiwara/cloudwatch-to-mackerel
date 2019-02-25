@@ -90,42 +90,56 @@ func RunWithContext(ctx context.Context, opt Option) error {
 	}
 
 	svc := cloudwatch.New(opt.Session)
-	res, err := svc.GetMetricDataWithContext(
-		ctx,
-		&cloudwatch.GetMetricDataInput{
-			StartTime:         aws.Time(opt.StartTime),
-			EndTime:           aws.Time(opt.EndTime),
-			MetricDataQueries: qs,
-		},
-	)
-	if err != nil {
-		return errors.Wrap(err, "failed to GetMetricData")
-	}
 
 	serviceMetrics := make(map[string][]*mackerel.MetricValue)
 	hostMetrics := []*mackerel.HostMetricValue{}
-
-	for _, r := range res.MetricDataResults {
-		for i, ts := range r.Timestamps {
-			tsUnix, value := (*ts).Unix(), *(r.Values[i])
-			service, hostID, name, err := parseLabel(*r.Label)
-			if err != nil {
-				log.Printf("[warn] %s label:%s", err, *r.Label)
-				continue
+	var nextToken *string
+	for {
+		if nextToken != nil {
+			log.Printf("[debug] GetMetricData nextToken:%s", *nextToken)
+		}
+		res, err := svc.GetMetricDataWithContext(
+			ctx,
+			&cloudwatch.GetMetricDataInput{
+				StartTime:         aws.Time(opt.StartTime),
+				EndTime:           aws.Time(opt.EndTime),
+				MetricDataQueries: qs,
+				NextToken:         nextToken,
+			},
+		)
+		if err != nil {
+			return errors.Wrap(err, "failed to GetMetricData")
+		}
+		for _, r := range res.MetricDataResults {
+			for i, ts := range r.Timestamps {
+				tsUnix, value := (*ts).Unix(), *(r.Values[i])
+				service, hostID, name, err := parseLabel(*r.Label)
+				if err != nil {
+					log.Printf("[warn] %s label:%s", err, *r.Label)
+					continue
+				}
+				mv := &mackerel.MetricValue{
+					Name:  name,
+					Time:  tsUnix,
+					Value: value,
+				}
+				if service != "" {
+					serviceMetrics[service] = append(serviceMetrics[service], mv)
+					log.Printf("[debug] service:%s metric:%v", service, mv)
+				} else {
+					hostMetrics = append(hostMetrics, &mackerel.HostMetricValue{
+						HostID:      hostID,
+						MetricValue: mv,
+					})
+					log.Printf("[debug] host:%s metric:%v", hostID, mv)
+				}
 			}
-			mv := &mackerel.MetricValue{
-				Name:  name,
-				Time:  tsUnix,
-				Value: value,
-			}
-			if service != "" {
-				serviceMetrics[service] = append(serviceMetrics[service], mv)
-			} else {
-				hostMetrics = append(hostMetrics, &mackerel.HostMetricValue{
-					HostID:      hostID,
-					MetricValue: mv,
-				})
-			}
+		}
+		if res.NextToken == nil {
+			// no more metrics
+			break
+		} else {
+			nextToken = res.NextToken
 		}
 	}
 
