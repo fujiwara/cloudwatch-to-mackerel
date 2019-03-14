@@ -15,7 +15,7 @@ cloudwatch-to-mackerel agent fetches metrics from Amazon CloudWatch by MetricDat
 Homebrew or [binary packages](https://github.com/fujiwara/cloudwatch-to-mackerel/releases).
 
 ```console
-$ brew insrall fujiwara/tap/cloudwatch-to-mackerel
+$ brew install fujiwara/tap/cloudwatch-to-mackerel
 ```
 
 ### Usage
