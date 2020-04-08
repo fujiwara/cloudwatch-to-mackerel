@@ -22,7 +22,8 @@ jobs:
 
     - name: Build & Test
       run: |
+        echo $PATH
         make setup_ci
         make test
       env:
-        PATH: "${{ env.HOME }}/go/bin:${{ env.PATH }}"
+        PATH: "${{ env.HOME }}/go/bin:/usr/local/bin:/usr/bin:/bin
