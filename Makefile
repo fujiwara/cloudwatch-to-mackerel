@@ -12,8 +12,7 @@ install: cmd/cw2mkr/cw2mkr
 setup_ci:
 	go get \
 		github.com/Songmu/goxz/cmd/goxz \
-		github.com/tcnksm/ghr \
-		golang.org/x/lint/golint
+		github.com/tcnksm/ghr
 
 test:
 	go test ./...
