@@ -23,3 +23,4 @@ jobs:
           make release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PATH: "${{ env.HOME }}/go/bin:${{ env.PATH }}"

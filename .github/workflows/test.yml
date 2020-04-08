@@ -24,3 +24,5 @@ jobs:
       run: |
         make setup_ci
         make test
+      env:
+        PATH: "${{ env.HOME }}/go/bin:${{ env.PATH }}"
