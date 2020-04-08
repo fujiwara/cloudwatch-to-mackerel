@@ -9,15 +9,9 @@ cmd/cw2mkr/cw2mkr: agent/*.go cmd/cw2mkr/*.go
 install: cmd/cw2mkr/cw2mkr
 	install cmd/cw2mkr/cw2mkr $(GOPATH)/bin
 
-setup_ci:
-	go get \
-		github.com/Songmu/goxz/cmd/goxz \
-		github.com/tcnksm/ghr
-
 test:
 	go test ./...
 	go vet ./...
-	golint -set_exit_status ./...
 
 clean:
 	rm -f cmd/cw2mkr/cw2mkr dist/*
