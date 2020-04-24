@@ -27,27 +27,33 @@ type Option struct {
 	Session   *session.Session
 }
 
+type parsedLabel struct {
+	service string
+	hostID  string
+	name    string
+}
+
 // parse parses a label string as service, hostID, metric name.
-func parseLabel(label string) (string, string, string, error) {
+func parseLabel(label string) (*parsedLabel, error) {
 	l := strings.SplitN(label, ":", 2)
 	if len(l) != 2 {
-		return "", "", "", errors.New("invalid label format")
+		return nil, errors.New("invalid label format")
 	}
 	s := strings.SplitN(l[0], "=", 2)
 	if len(s) != 2 {
-		return "", "", "", errors.New("invalid label format")
+		return nil, errors.New("invalid label format")
 	}
 	t, id, name := s[0], s[1], l[1]
 	if t == "" || id == "" || name == "" {
-		return "", "", "", errors.New("invalid label format")
+		return nil, errors.New("invalid label format")
 	}
 	switch t {
 	case "service":
-		return id, "", name, nil
+		return &parsedLabel{service: id, name: name}, nil
 	case "host":
-		return "", id, name, nil
+		return &parsedLabel{hostID: id, name: name}, nil
 	}
-	return "", "", "", errors.New("invalid label format")
+	return nil, errors.New("invalid label format")
 }
 
 func validateOption(opt *Option) (err error) {
@@ -123,25 +129,26 @@ func fetchMetrics(ctx context.Context, opt Option, qs []*cloudwatch.MetricDataQu
 		for _, r := range res.MetricDataResults {
 			for i, ts := range r.Timestamps {
 				tsUnix, value := (*ts).Unix(), *(r.Values[i])
-				service, hostID, name, err := parseLabel(*r.Label)
+				label := *r.Label
+				p, err := parseLabel(label)
 				if err != nil {
-					log.Printf("[warn] %s label:%s", err, *r.Label)
+					log.Printf("[warn] %s label:%s", err, label)
 					continue
 				}
 				mv := &mackerel.MetricValue{
-					Name:  name,
+					Name:  p.name,
 					Time:  tsUnix,
 					Value: value,
 				}
-				if service != "" {
-					serviceMetrics[service] = append(serviceMetrics[service], mv)
-					log.Printf("[debug] service:%s metric:%v", service, mv)
+				if p.service != "" {
+					serviceMetrics[p.service] = append(serviceMetrics[p.service], mv)
+					log.Printf("[debug] service:%s metric:%v", p.service, mv)
 				} else {
 					hostMetrics = append(hostMetrics, &mackerel.HostMetricValue{
-						HostID:      hostID,
+						HostID:      p.hostID,
 						MetricValue: mv,
 					})
-					log.Printf("[debug] host:%s metric:%v", hostID, mv)
+					log.Printf("[debug] host:%s metric:%v", p.hostID, mv)
 				}
 			}
 		}
