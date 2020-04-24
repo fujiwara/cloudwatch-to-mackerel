@@ -1,20 +1,42 @@
 package agent
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+)
 
 type labelSuite struct {
 	label  string
-	parsed *parsedLabel
+	parsed *ParsedLabel
 }
 
 var labelSuites = []labelSuite{
 	{
-		label:  "service=prod:foo.bar.baz",
-		parsed: &parsedLabel{service: "prod", name: "foo.bar.baz"},
+		label: "service=prod:foo.bar.baz",
+		parsed: &ParsedLabel{
+			Service: "prod",
+			Name:    "foo.bar.baz",
+			Options: map[string]struct{}{},
+		},
 	},
 	{
-		label:  "host=abcdefg:boo.foo.uoo",
-		parsed: &parsedLabel{hostID: "abcdefg", name: "boo.foo.uoo"},
+		label: "host=abcdefg:boo.foo.uoo",
+		parsed: &ParsedLabel{
+			HostID:  "abcdefg",
+			Name:    "boo.foo.uoo",
+			Options: map[string]struct{}{},
+		},
+	},
+	{
+		label: "host=foo:hoge;emit_zero",
+		parsed: &ParsedLabel{
+			HostID: "foo",
+			Name:   "hoge",
+			Options: map[string]struct{}{
+				"emit_zero": {},
+			},
+		},
 	},
 	{
 		label: "zzz:foo.bar.baz",
@@ -31,8 +53,8 @@ func TestParseLabel(t *testing.T) {
 	for _, s := range labelSuites {
 		p, err := parseLabel(s.label)
 		if s.parsed != nil {
-			if p.service != s.parsed.service || p.hostID != s.parsed.hostID || p.name != s.parsed.name {
-				t.Errorf("unexpected parseLine got:%#v expected:%#v", p, s.parsed)
+			if diff := cmp.Diff(p, s.parsed); diff != "" {
+				t.Errorf("unexpected parseLine diff:%s", diff)
 			}
 		} else {
 			if err == nil {

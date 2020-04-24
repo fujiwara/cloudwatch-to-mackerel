@@ -27,14 +27,15 @@ type Option struct {
 	Session   *session.Session
 }
 
-type parsedLabel struct {
-	service string
-	hostID  string
-	name    string
+type ParsedLabel struct {
+	Service string
+	HostID  string
+	Name    string
+	Options map[string]struct{}
 }
 
 // parse parses a label string as service, hostID, metric name.
-func parseLabel(label string) (*parsedLabel, error) {
+func parseLabel(label string) (*ParsedLabel, error) {
 	l := strings.SplitN(label, ":", 2)
 	if len(l) != 2 {
 		return nil, errors.New("invalid label format")
@@ -47,11 +48,30 @@ func parseLabel(label string) (*parsedLabel, error) {
 	if t == "" || id == "" || name == "" {
 		return nil, errors.New("invalid label format")
 	}
+
+	options := make(map[string]struct{}, 0)
+	if strings.Contains(name, ";") {
+		nameWithOpts := strings.Split(l[1], ";")
+		name = nameWithOpts[0]
+		for _, o := range nameWithOpts[1:] {
+			o := o
+			options[o] = struct{}{}
+		}
+	}
+
 	switch t {
 	case "service":
-		return &parsedLabel{service: id, name: name}, nil
+		return &ParsedLabel{
+			Service: id,
+			Name:    name,
+			Options: options,
+		}, nil
 	case "host":
-		return &parsedLabel{hostID: id, name: name}, nil
+		return &ParsedLabel{
+			HostID:  id,
+			Name:    name,
+			Options: options,
+		}, nil
 	}
 	return nil, errors.New("invalid label format")
 }
@@ -110,6 +130,7 @@ func fetchMetrics(ctx context.Context, opt Option, qs []*cloudwatch.MetricDataQu
 	serviceMetrics := make(map[string][]*mackerel.MetricValue)
 	hostMetrics := []*mackerel.HostMetricValue{}
 	var nextToken *string
+	results := make(map[string]*cloudwatch.MetricDataResult)
 	for {
 		if nextToken != nil {
 			log.Printf("[debug] GetMetricData nextToken:%s", *nextToken)
@@ -126,37 +147,56 @@ func fetchMetrics(ctx context.Context, opt Option, qs []*cloudwatch.MetricDataQu
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed to GetMetricData")
 		}
+
 		for _, r := range res.MetricDataResults {
-			for i, ts := range r.Timestamps {
-				tsUnix, value := (*ts).Unix(), *(r.Values[i])
-				label := *r.Label
-				p, err := parseLabel(label)
-				if err != nil {
-					log.Printf("[warn] %s label:%s", err, label)
-					continue
-				}
-				mv := &mackerel.MetricValue{
-					Name:  p.name,
-					Time:  tsUnix,
-					Value: value,
-				}
-				if p.service != "" {
-					serviceMetrics[p.service] = append(serviceMetrics[p.service], mv)
-					log.Printf("[debug] service:%s metric:%v", p.service, mv)
-				} else {
-					hostMetrics = append(hostMetrics, &mackerel.HostMetricValue{
-						HostID:      p.hostID,
-						MetricValue: mv,
-					})
-					log.Printf("[debug] host:%s metric:%v", p.hostID, mv)
-				}
-			}
+			result := r
+			label := *result.Label
+			results[label] = result
 		}
 		if res.NextToken == nil {
 			// no more metrics
 			break
-		} else {
-			nextToken = res.NextToken
+		}
+		nextToken = res.NextToken
+	}
+
+	for _, query := range qs {
+		label := *query.Label
+		p, err := parseLabel(label)
+		if err != nil {
+			log.Printf("[warn] %s label:%s", err, label)
+			continue
+		}
+		r, ok := results[label]
+		if !ok {
+			// data points not found
+			if _, ok := p.Options["emit_zero"]; ok {
+				r = &cloudwatch.MetricDataResult{
+					Timestamps: []*time.Time{&opt.EndTime},
+					Values:     []*float64{aws.Float64(0)},
+				}
+			}
+		}
+		if r == nil {
+			continue
+		}
+		for i, ts := range r.Timestamps {
+			tsUnix, value := (*ts).Unix(), *(r.Values[i])
+			mv := &mackerel.MetricValue{
+				Name:  p.Name,
+				Time:  tsUnix,
+				Value: value,
+			}
+			if p.Service != "" {
+				serviceMetrics[p.Service] = append(serviceMetrics[p.Service], mv)
+				log.Printf("[debug] service:%s metric:%v", p.Service, mv)
+			} else {
+				hostMetrics = append(hostMetrics, &mackerel.HostMetricValue{
+					HostID:      p.HostID,
+					MetricValue: mv,
+				})
+				log.Printf("[debug] host:%s metric:%v", p.HostID, mv)
+			}
 		}
 	}
 	return serviceMetrics, hostMetrics, nil
