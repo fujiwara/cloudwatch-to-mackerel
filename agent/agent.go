@@ -89,6 +89,16 @@ func RunWithContext(ctx context.Context, opt Option) error {
 		return errors.Wrap(err, "failed to parse query as MetricDataQuery")
 	}
 
+	serviceMetrics, hostMetrics, err := fetchMetrics(ctx, opt, qs)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch metrics from CloudWatch")
+	}
+
+	postMetrics(ctx, opt, serviceMetrics, hostMetrics)
+	return nil
+}
+
+func fetchMetrics(ctx context.Context, opt Option, qs []*cloudwatch.MetricDataQuery) (map[string][]*mackerel.MetricValue, []*mackerel.HostMetricValue, error) {
 	svc := cloudwatch.New(opt.Session)
 
 	serviceMetrics := make(map[string][]*mackerel.MetricValue)
@@ -108,7 +118,7 @@ func RunWithContext(ctx context.Context, opt Option) error {
 			},
 		)
 		if err != nil {
-			return errors.Wrap(err, "failed to GetMetricData")
+			return nil, nil, errors.Wrap(err, "failed to GetMetricData")
 		}
 		for _, r := range res.MetricDataResults {
 			for i, ts := range r.Timestamps {
@@ -142,7 +152,10 @@ func RunWithContext(ctx context.Context, opt Option) error {
 			nextToken = res.NextToken
 		}
 	}
+	return serviceMetrics, hostMetrics, nil
+}
 
+func postMetrics(ctx context.Context, opt Option, serviceMetrics map[string][]*mackerel.MetricValue, hostMetrics []*mackerel.HostMetricValue) {
 	client := mackerel.NewClient(opt.APIKey)
 
 	// post service metrics
@@ -175,6 +188,4 @@ func RunWithContext(ctx context.Context, opt Option) error {
 			log.Println("[warn] failed to PostHostMetricValues", err)
 		}
 	}
-
-	return nil
 }
