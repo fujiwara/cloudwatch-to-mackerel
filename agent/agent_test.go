@@ -8,34 +8,30 @@ import (
 
 type labelSuite struct {
 	label  string
-	parsed *ParsedLabel
+	parsed Label
 }
 
 var labelSuites = []labelSuite{
 	{
 		label: "service=prod:foo.bar.baz",
-		parsed: &ParsedLabel{
+		parsed: Label{
 			Service: "prod",
 			Name:    "foo.bar.baz",
-			Options: map[string]struct{}{},
 		},
 	},
 	{
 		label: "host=abcdefg:boo.foo.uoo",
-		parsed: &ParsedLabel{
-			HostID:  "abcdefg",
-			Name:    "boo.foo.uoo",
-			Options: map[string]struct{}{},
+		parsed: Label{
+			HostID: "abcdefg",
+			Name:   "boo.foo.uoo",
 		},
 	},
 	{
 		label: "host=foo:hoge;emit_zero",
-		parsed: &ParsedLabel{
-			HostID: "foo",
-			Name:   "hoge",
-			Options: map[string]struct{}{
-				"emit_zero": {},
-			},
+		parsed: Label{
+			HostID:   "foo",
+			Name:     "hoge",
+			EmitZero: true,
 		},
 	},
 	{
@@ -52,9 +48,12 @@ var labelSuites = []labelSuite{
 func TestParseLabel(t *testing.T) {
 	for _, s := range labelSuites {
 		p, err := parseLabel(s.label)
-		if s.parsed != nil {
+		if s.parsed.Name != "" {
 			if diff := cmp.Diff(p, s.parsed); diff != "" {
 				t.Errorf("unexpected parseLine diff:%s", diff)
+			}
+			if s.label != p.String() {
+				t.Errorf("failed to roundtrip %s to %s", s.label, p.String())
 			}
 		} else {
 			if err == nil {
