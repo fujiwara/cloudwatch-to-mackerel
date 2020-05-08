@@ -15,9 +15,16 @@ import (
 	"github.com/pkg/errors"
 
 	mackerel "github.com/mackerelio/mackerel-client-go"
+	retry "github.com/shogo82148/go-retry"
 )
 
 const batchSize = 100
+
+var policy = retry.Policy{
+	MinDelay: time.Second,
+	MaxDelay: 10 * time.Second,
+	MaxCount: 10,
+}
 
 // Option represents agent option.
 type Option struct {
@@ -258,7 +265,9 @@ func postMetrics(ctx context.Context, opt Option, serviceMetrics map[string][]*m
 				end = size
 			}
 			log.Printf("[info] PostServiceMetricValues %s values[%d:%d]", service, start, end)
-			err := client.PostServiceMetricValues(service, values[start:end])
+			err := policy.Do(ctx, func() error {
+				return client.PostServiceMetricValues(service, values[start:end])
+			})
 			if err != nil {
 				log.Printf("[warn] failed to PostServiceMetricValues service:%s %s", service, err)
 			}
