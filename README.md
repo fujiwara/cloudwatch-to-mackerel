@@ -25,13 +25,13 @@ $ cw2mkr metric-data-query.json
 ```
 
 ```
-Usage of cw2mkr:
+Usage of ./cmd/cw2mkr/cw2mkr:
   -end-time int
-    	end time(unix)
+    	end time(unix) if negative, relative time from now
   -log-level string
     	log level (debug, info, warn, error) (default "warn")
   -start-time int
-    	start time(unix)
+    	start time(unix) if negative, relative time from now
 ```
 
 Environment variable `AWS_REGION` and `MACKEREL_APIKEY` are required both.
