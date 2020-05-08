@@ -23,8 +23,8 @@ func main() {
 func run() error {
 	var startTime, endTime int64
 	var logLevel string
-	flag.Int64Var(&startTime, "start-time", 0, "start time(unix)")
-	flag.Int64Var(&endTime, "end-time", 0, "end time(unix)")
+	flag.Int64Var(&startTime, "start-time", 0, "start time(unix) if negative, relative time from now")
+	flag.Int64Var(&endTime, "end-time", 0, "end time(unix) if negative, relative time from now")
 	flag.StringVar(&logLevel, "log-level", "warn", "log level (debug, info, warn, error)")
 	flag.Parse()
 
@@ -36,11 +36,16 @@ func run() error {
 	log.SetOutput(filter)
 
 	opt := agent.Option{}
-	if startTime != 0 {
+	if startTime > 0 {
 		opt.StartTime = time.Unix(startTime, 0)
+	} else if startTime < 0 {
+		opt.StartTime = time.Now().Add(time.Duration(startTime) * time.Second)
 	}
-	if endTime != 0 {
+
+	if endTime > 0 {
 		opt.EndTime = time.Unix(endTime, 0)
+	} else if endTime < 0 {
+		opt.StartTime = time.Now().Add(time.Duration(endTime) * time.Second)
 	}
 
 	if len(flag.Args()) != 1 {
