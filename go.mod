@@ -9,4 +9,5 @@ require (
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mackerelio/mackerel-client-go v0.2.0
 	github.com/pkg/errors v0.9.1
+	github.com/shogo82148/go-retry v1.0.0
 )
