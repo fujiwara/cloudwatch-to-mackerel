@@ -25,7 +25,7 @@ $ cw2mkr metric-data-query.json
 ```
 
 ```
-Usage of ./cmd/cw2mkr/cw2mkr:
+Usage of cw2mkr:
   -end-time int
     	end time(unix) if negative, relative time from now
   -log-level string
