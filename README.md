@@ -105,10 +105,11 @@ See also `aws cloudwatch get-metric-data help`.
 cloudwatch-to-mackerel parses `Label` fields in MetricDataQuery as Mackerel's service/host which to post metrics.
 
 ```ebnf
-(* service name, host id, metric name are defined by Mackerel *)
-service = "service=" , service name ;
-host    = "host=" , host id ;
-label   = ( service | host ) , ":" , metric name ;
+(* service_name, host_id, metric_name are defined by Mackerel *)
+service = "service=" , service_name ;
+host    = "host=" , host_id ;
+option  = "emit_zero"
+label   = ( service | host ) , ":" , metric_name , { ";", option } ;
 ```
 
 ## License
