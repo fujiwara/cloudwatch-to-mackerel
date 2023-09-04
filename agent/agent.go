@@ -195,7 +195,7 @@ func fetchMetrics(ctx context.Context, opt Option, qs []*cloudwatch.MetricDataQu
 			continue
 		}
 		var period time.Duration
-		if query.MetricStat.Period != nil {
+		if query.MetricStat != nil && query.MetricStat.Period != nil {
 			period = time.Duration(*query.MetricStat.Period) * time.Second
 		} else if query.Period != nil {
 			period = time.Duration(*query.Period) * time.Second
