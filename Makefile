@@ -2,6 +2,7 @@
 
 TAG := $(shell git describe --tags)
 export GO111MODULE := on
+export CGO_ENABLED := 0
 
 cmd/cw2mkr/cw2mkr: agent/*.go cmd/cw2mkr/*.go
 	cd cmd/cw2mkr && go build
