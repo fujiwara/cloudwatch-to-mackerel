@@ -31,10 +31,10 @@ func run() error {
 	var dumpMetrics bool
 	flag.Int64Var(&startTime, "start-time", 0, "start time(unix) if negative, relative time from now. env:CW2MKR_START_TIME")
 	flag.Int64Var(&endTime, "end-time", 0, "end time(unix) if negative, relative time from now. env:CW2MKR_END_TIME")
-	flag.StringVar(&logLevel, "log-level", "warn", "log level (debug, info, warn, error) env:CW2MKR_LOG_LEVEL")
+	flag.StringVar(&logLevel, "log-level", "info", "log level (debug, info, warn, error) env:CW2MKR_LOG_LEVEL")
 	flag.StringVar(&queryFile, "query-file", "", "query file path. env:CW2MKR_QUERY_FILE")
 	flag.StringVar(&query, "query", "", "query content. env:CW2MKR_QUERY")
-	flag.BoolVar(&dumpMetrics, "dump-metrics", true, "dump metrics to stdout instead of posting to mackerel. env:CW2MKR_DUMP_METRICS")
+	flag.BoolVar(&dumpMetrics, "dump-metrics", false, "dump metrics to stdout instead of posting to mackerel. env:CW2MKR_DUMP_METRICS")
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.VisitAll(envToFlag)
 	flag.Parse()
