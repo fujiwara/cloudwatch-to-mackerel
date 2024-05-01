@@ -29,12 +29,14 @@ func run() error {
 	var queryFile string
 	var query string
 	var dumpMetrics bool
+	var timeOffset time.Duration
 	flag.Int64Var(&startTime, "start-time", 0, "start time(unix) if negative, relative time from now. env:CW2MKR_START_TIME")
 	flag.Int64Var(&endTime, "end-time", 0, "end time(unix) if negative, relative time from now. env:CW2MKR_END_TIME")
 	flag.StringVar(&logLevel, "log-level", "info", "log level (debug, info, warn, error) env:CW2MKR_LOG_LEVEL")
 	flag.StringVar(&queryFile, "query-file", "", "query file path. env:CW2MKR_QUERY_FILE")
 	flag.StringVar(&query, "query", "", "query content. env:CW2MKR_QUERY")
 	flag.BoolVar(&dumpMetrics, "dump-metrics", false, "dump metrics to stdout instead of posting to mackerel. env:CW2MKR_DUMP_METRICS")
+	flag.DurationVar(&timeOffset, "time-offset", 0, "time offset for relative time. env:CW2MKR_TIME_OFFSET")
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.VisitAll(envToFlag)
 	flag.Parse()
@@ -50,7 +52,10 @@ func run() error {
 	}
 	log.SetOutput(filter)
 
-	opt := agent.Option{}
+	opt := agent.Option{
+		TimeOffset: timeOffset,
+		DumpMetrics: dumpMetrics,
+	}
 	if startTime > 0 {
 		opt.StartTime = time.Unix(startTime, 0)
 	} else if startTime < 0 {
@@ -84,7 +89,6 @@ func run() error {
 		}
 		opt.Query = q
 	}
-	opt.DumpMetrics = dumpMetrics
 
 	lamblocal.CLISrc = strings.NewReader("{}") // empty payload
 	return lamblocal.RunWithError(context.TODO(), func(ctx context.Context, _ struct{}) (struct{}, error) {
