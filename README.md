@@ -36,14 +36,12 @@ Usage of cw2mkr:
 
 Environment variable `AWS_REGION` and `MACKEREL_APIKEY` are required both.
 
-By the default, end-time is now, start-time is 3 minuts ago.
+By the default, end-time is now, start-time is 3 min ago.
 
 ## Usage (as library)
 
 ```go
 import (
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/fujiwara/cloudwatch-to-mackerel/agent"
 )
 

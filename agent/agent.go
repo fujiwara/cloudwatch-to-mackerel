@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
-	"github.com/pkg/errors"
 
 	mackerel "github.com/mackerelio/mackerel-client-go"
 	retry "github.com/shogo82148/go-retry"
@@ -105,7 +105,7 @@ func validateOption(opt *Option) (err error) {
 	if cfg == nil {
 		cfg, err := config.LoadDefaultConfig(context.TODO())
 		if err != nil {
-			return errors.Wrap(err, "failed to new session")
+			return fmt.Errorf("failed to new config: %w", err)
 		}
 		opt.AWSCfg = &cfg
 	}
@@ -137,12 +137,12 @@ func RunWithContext(ctx context.Context, opt Option) error {
 	}
 	var qs []types.MetricDataQuery
 	if err := json.Unmarshal(opt.Query, &qs); err != nil {
-		return errors.Wrap(err, "failed to parse query as MetricDataQuery")
+		return fmt.Errorf("failed to parse query as MetricDataQuery: %w", err)
 	}
 	log.Printf("[debug] query %#v", qs)
 	results, err := fetchMetrics(ctx, opt, qs)
 	if err != nil {
-		return errors.Wrap(err, "failed to fetch metrics from CloudWatch")
+		return fmt.Errorf("failed to fetch metrics from CloudWatch", err)
 	}
 	log.Printf("[debug] results %#v", results)
 	serviceMetrics, hostMetrics := buildMetrics(results)
@@ -172,7 +172,7 @@ func fetchMetrics(ctx context.Context, opt Option, qs []types.MetricDataQuery) (
 			},
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to GetMetricData")
+			return nil, fmt.Errorf("failed to GetMetricData: %w", err)
 		}
 
 		for _, r := range res.MetricDataResults {
