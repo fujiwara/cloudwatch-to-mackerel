@@ -3,7 +3,9 @@ module github.com/fujiwara/cloudwatch-to-mackerel
 go 1.14
 
 require (
-	github.com/aws/aws-sdk-go v1.45.2
+	github.com/aws/aws-sdk-go-v2 v1.26.1
+	github.com/aws/aws-sdk-go-v2/config v1.27.11
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.38.0
 	github.com/google/go-cmp v0.4.0
 	github.com/hashicorp/logutils v1.0.0
 	github.com/mackerelio/mackerel-client-go v0.26.0
