@@ -36,7 +36,7 @@ func run() error {
 	flag.StringVar(&queryFile, "query-file", "", "query file path. env:CW2MKR_QUERY_FILE")
 	flag.StringVar(&query, "query", "", "query content. env:CW2MKR_QUERY")
 	flag.BoolVar(&dumpMetrics, "dump-metrics", false, "dump metrics to stdout instead of posting to mackerel. env:CW2MKR_DUMP_METRICS")
-	flag.DurationVar(&timeOffset, "time-offset", 0, "time offset for relative time. env:CW2MKR_TIME_OFFSET")
+	flag.DurationVar(&timeOffset, "time-offset", 0, "time offset for relative time. adds the offset to mackerel's metrics env:CW2MKR_TIME_OFFSET")
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.VisitAll(envToFlag)
 	flag.Parse()
