@@ -53,19 +53,28 @@ func run() error {
 	log.SetOutput(filter)
 
 	opt := agent.Option{
-		TimeOffset: timeOffset,
+		TimeOffset:  timeOffset,
 		DumpMetrics: dumpMetrics,
 	}
+	var startTimeFunc, endTimeFunc func() time.Time
 	if startTime > 0 {
-		opt.StartTime = time.Unix(startTime, 0)
-	} else if startTime < 0 {
-		opt.StartTime = time.Now().Add(time.Duration(startTime) * time.Second)
+		startTimeFunc = func () time.Time {
+			return time.Unix(startTime, 0)
+		}
+	} else if startTime <= 0 {
+		startTimeFunc = func() time.Time {
+			return time.Now().Add(time.Duration(startTime) * time.Second)
+		}
 	}
 
 	if endTime > 0 {
-		opt.EndTime = time.Unix(endTime, 0)
-	} else if endTime < 0 {
-		opt.StartTime = time.Now().Add(time.Duration(endTime) * time.Second)
+		endTimeFunc = func() time.Time {
+			return time.Unix(endTime, 0)
+		}
+	} else if endTime <= 0 {
+		endTimeFunc = func() time.Time {
+			return time.Now().Add(time.Duration(endTime) * time.Second)
+		}
 	}
 
 	if query != "" && queryFile != "" {
@@ -92,6 +101,8 @@ func run() error {
 
 	lamblocal.CLISrc = strings.NewReader("{}") // empty payload
 	return lamblocal.RunWithError(context.TODO(), func(ctx context.Context, _ struct{}) (struct{}, error) {
+		opt.StartTime = startTimeFunc()
+		opt.EndTime = endTimeFunc()
 		return struct{}{}, agent.RunWithContext(ctx, opt)
 	})
 }
