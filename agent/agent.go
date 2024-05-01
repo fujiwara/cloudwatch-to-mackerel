@@ -31,11 +31,12 @@ var policy = retry.Policy{
 
 // Option represents agent option.
 type Option struct {
-	StartTime time.Time
-	EndTime   time.Time
-	APIKey    string
-	Query     []byte
-	AWSCfg    *aws.Config
+	StartTime   time.Time
+	EndTime     time.Time
+	APIKey      string
+	Query       []byte
+	DumpMetrics bool
+	AWSCfg      *aws.Config
 }
 
 // Label represents structured label
@@ -102,10 +103,10 @@ func parseLabel(label string) (Label, error) {
 	return parsed, nil
 }
 
-func validateOption(opt *Option) (err error) {
+func validateOption(ctx context.Context, opt *Option) (err error) {
 	cfg := opt.AWSCfg
 	if cfg == nil {
-		cfg, err := config.LoadDefaultConfig(context.TODO())
+		cfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to new config: %w", err)
 		}
@@ -114,7 +115,7 @@ func validateOption(opt *Option) (err error) {
 	if opt.APIKey == "" {
 		opt.APIKey = os.Getenv("MACKEREL_APIKEY")
 	}
-	if opt.APIKey == "" {
+	if !opt.DumpMetrics && opt.APIKey == "" {
 		return errors.New("Option.APIKey or MACKEREL_APIKEY environment variable is required")
 	}
 	now := time.Now()
@@ -134,7 +135,7 @@ func Run(opt Option) error {
 
 // RunWithContext fetches metrics from CloudWatch by MetricDataQuery with context and post these to Mackerel.
 func RunWithContext(ctx context.Context, opt Option) error {
-	if err := validateOption(&opt); err != nil {
+	if err := validateOption(ctx, &opt); err != nil {
 		return err
 	}
 	var qs []types.MetricDataQuery
@@ -151,8 +152,11 @@ func RunWithContext(ctx context.Context, opt Option) error {
 	log.Printf("[debug] service metrics %#v", serviceMetrics)
 	log.Printf("[debug] host metrics %#v", hostMetrics)
 
-	postMetrics(ctx, opt, serviceMetrics, hostMetrics)
-	return nil
+	if opt.DumpMetrics {
+		log.Printf("[info] skip posting metrics to Mackerel")
+		return dumpMetrics(ctx, serviceMetrics, hostMetrics)
+	}
+	return postMetrics(ctx, opt, serviceMetrics, hostMetrics)
 }
 
 func fetchMetrics(ctx context.Context, opt Option, qs []types.MetricDataQuery) (map[Label]types.MetricDataResult, error) {
@@ -256,7 +260,17 @@ func buildMetrics(results map[Label]types.MetricDataResult) (serviceMetrics map[
 	return serviceMetrics, hostMetrics
 }
 
-func postMetrics(ctx context.Context, opt Option, serviceMetrics map[string][]*mackerel.MetricValue, hostMetrics []*mackerel.HostMetricValue) {
+func dumpMetrics(ctx context.Context, serviceMetrics map[string][]*mackerel.MetricValue, hostMetrics []*mackerel.HostMetricValue) error {
+	if err := json.NewEncoder(os.Stdout).Encode(serviceMetrics); err != nil {
+		return err
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(hostMetrics); err != nil {
+		return err
+	}
+	return nil
+}
+
+func postMetrics(ctx context.Context, opt Option, serviceMetrics map[string][]*mackerel.MetricValue, hostMetrics []*mackerel.HostMetricValue) error {
 	client := mackerel.NewClient(opt.APIKey)
 
 	// post service metrics
@@ -274,6 +288,7 @@ func postMetrics(ctx context.Context, opt Option, serviceMetrics map[string][]*m
 			})
 			if err != nil {
 				log.Printf("[warn] failed to PostServiceMetricValues service:%s %s", service, err)
+				return err
 			}
 		}
 	}
@@ -289,6 +304,8 @@ func postMetrics(ctx context.Context, opt Option, serviceMetrics map[string][]*m
 		err := client.PostHostMetricValues(hostMetrics[start:end])
 		if err != nil {
 			log.Println("[warn] failed to PostHostMetricValues", err)
+			return err
 		}
 	}
+	return nil
 }
