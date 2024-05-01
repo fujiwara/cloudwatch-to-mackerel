@@ -3,16 +3,17 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatch"
-	"github.com/pkg/errors"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 
 	mackerel "github.com/mackerelio/mackerel-client-go"
 	retry "github.com/shogo82148/go-retry"
@@ -32,7 +33,7 @@ type Option struct {
 	EndTime   time.Time
 	APIKey    string
 	Query     []byte
-	Session   *session.Session
+	AWSCfg    *aws.Config
 }
 
 // Label represents structured label
@@ -100,18 +101,19 @@ func parseLabel(label string) (Label, error) {
 }
 
 func validateOption(opt *Option) (err error) {
-	sess := opt.Session
-	if sess == nil {
-		opt.Session, err = session.NewSession(&aws.Config{})
+	cfg := opt.AWSCfg
+	if cfg == nil {
+		cfg, err := config.LoadDefaultConfig(context.TODO())
 		if err != nil {
-			return errors.Wrap(err, "failed to new session")
+			return fmt.Errorf("failed to new config: %w", err)
 		}
+		opt.AWSCfg = &cfg
 	}
 	if opt.APIKey == "" {
 		opt.APIKey = os.Getenv("MACKEREL_APIKEY")
 	}
 	if opt.APIKey == "" {
-		return errors.New("Option.APIKey or MACKEREL_APIKEY envrionment variable is required")
+		return errors.New("Option.APIKey or MACKEREL_APIKEY environment variable is required")
 	}
 	now := time.Now()
 	if opt.StartTime.IsZero() {
@@ -133,14 +135,14 @@ func RunWithContext(ctx context.Context, opt Option) error {
 	if err := validateOption(&opt); err != nil {
 		return err
 	}
-	var qs []*cloudwatch.MetricDataQuery
+	var qs []types.MetricDataQuery
 	if err := json.Unmarshal(opt.Query, &qs); err != nil {
-		return errors.Wrap(err, "failed to parse query as MetricDataQuery")
+		return fmt.Errorf("failed to parse query as MetricDataQuery: %w", err)
 	}
 	log.Printf("[debug] query %#v", qs)
 	results, err := fetchMetrics(ctx, opt, qs)
 	if err != nil {
-		return errors.Wrap(err, "failed to fetch metrics from CloudWatch")
+		return fmt.Errorf("failed to fetch metrics from CloudWatch: %w", err)
 	}
 	log.Printf("[debug] results %#v", results)
 	serviceMetrics, hostMetrics := buildMetrics(results)
@@ -151,16 +153,16 @@ func RunWithContext(ctx context.Context, opt Option) error {
 	return nil
 }
 
-func fetchMetrics(ctx context.Context, opt Option, qs []*cloudwatch.MetricDataQuery) (map[Label]*cloudwatch.MetricDataResult, error) {
-	svc := cloudwatch.New(opt.Session)
+func fetchMetrics(ctx context.Context, opt Option, qs []types.MetricDataQuery) (map[Label]types.MetricDataResult, error) {
+	svc := cloudwatch.NewFromConfig(*opt.AWSCfg)
 	var nextToken *string
-	results := make(map[Label]*cloudwatch.MetricDataResult)
+	results := make(map[Label]types.MetricDataResult)
 	for {
 		if nextToken != nil {
 			log.Printf("[debug] GetMetricData nextToken:%s", *nextToken)
 		}
 		log.Printf("[debug] GetMetricData from %s to %s", opt.StartTime, opt.EndTime)
-		res, err := svc.GetMetricDataWithContext(
+		res, err := svc.GetMetricData(
 			ctx,
 			&cloudwatch.GetMetricDataInput{
 				StartTime:         aws.Time(opt.StartTime),
@@ -170,7 +172,7 @@ func fetchMetrics(ctx context.Context, opt Option, qs []*cloudwatch.MetricDataQu
 			},
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to GetMetricData")
+			return nil, fmt.Errorf("failed to GetMetricData: %w", err)
 		}
 
 		for _, r := range res.MetricDataResults {
@@ -207,7 +209,7 @@ func fetchMetrics(ctx context.Context, opt Option, qs []*cloudwatch.MetricDataQu
 	return results, nil
 }
 
-func fillResult(opt Option, label Label, period time.Duration, res *cloudwatch.MetricDataResult) {
+func fillResult(opt Option, label Label, period time.Duration, res types.MetricDataResult) {
 	log.Printf("[debug] filling missing data points for %s (period %s)", label, period)
 TIMESTAMP:
 	for t := opt.StartTime.Truncate(time.Minute); t.Before(opt.EndTime); t = t.Add(period) {
@@ -217,12 +219,12 @@ TIMESTAMP:
 				continue TIMESTAMP
 			}
 		}
-		res.Timestamps = append(res.Timestamps, &ts)
-		res.Values = append(res.Values, aws.Float64(0))
+		res.Timestamps = append(res.Timestamps, ts)
+		res.Values = append(res.Values, 0)
 	}
 }
 
-func buildMetrics(results map[Label]*cloudwatch.MetricDataResult) (serviceMetrics map[string][]*mackerel.MetricValue, hostMetrics []*mackerel.HostMetricValue) {
+func buildMetrics(results map[Label]types.MetricDataResult) (serviceMetrics map[string][]*mackerel.MetricValue, hostMetrics []*mackerel.HostMetricValue) {
 	serviceMetrics = make(map[string][]*mackerel.MetricValue)
 	hostMetrics = make([]*mackerel.HostMetricValue, 0)
 	for label, r := range results {
@@ -231,7 +233,7 @@ func buildMetrics(results map[Label]*cloudwatch.MetricDataResult) (serviceMetric
 			serviceMetrics[label.Service] = make([]*mackerel.MetricValue, 0)
 		}
 		for i, ts := range r.Timestamps {
-			tsUnix, value := (*ts).Unix(), *(r.Values[i])
+			tsUnix, value := ts.Unix(), r.Values[i]
 			mv := &mackerel.MetricValue{
 				Name:  label.Name,
 				Time:  tsUnix,

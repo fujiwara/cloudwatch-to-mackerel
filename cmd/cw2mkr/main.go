@@ -4,7 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -55,7 +55,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	opt.Query, err = ioutil.ReadAll(f)
+	opt.Query, err = io.ReadAll(f)
 	if err != nil {
 		return err
 	}
