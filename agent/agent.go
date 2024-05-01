@@ -19,6 +19,8 @@ import (
 	retry "github.com/shogo82148/go-retry"
 )
 
+var Version = "current"
+
 const batchSize = 100
 
 var policy = retry.Policy{

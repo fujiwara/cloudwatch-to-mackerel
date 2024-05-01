@@ -23,11 +23,17 @@ func main() {
 func run() error {
 	var startTime, endTime int64
 	var logLevel string
+	var showVersion bool
 	flag.Int64Var(&startTime, "start-time", 0, "start time(unix) if negative, relative time from now")
 	flag.Int64Var(&endTime, "end-time", 0, "end time(unix) if negative, relative time from now")
 	flag.StringVar(&logLevel, "log-level", "warn", "log level (debug, info, warn, error)")
+	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.Parse()
 
+	if showVersion {
+		fmt.Printf("cloudwatch-to-mackerel(cw2mkr) %s\n", agent.Version)
+		return nil
+	}
 	filter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"debug", "info", "warn", "error"},
 		MinLevel: logutils.LogLevel(logLevel),
