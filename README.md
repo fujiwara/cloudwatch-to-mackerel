@@ -38,6 +38,8 @@ Usage of cw2mkr:
         query file path. env:CW2MKR_QUERY_FILE
   -start-time int
         start time(unix) if negative, relative time from now. env:CW2MKR_START_TIME
+  -time-offset duration
+        time offset for relative time. adds the offset to mackerel's metrics env:CW2MKR_TIME_OFFSET
   -version
         show version
 ```

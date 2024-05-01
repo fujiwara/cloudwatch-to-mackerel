@@ -36,6 +36,7 @@ type Option struct {
 	APIKey      string
 	Query       []byte
 	DumpMetrics bool
+	TimeOffset  time.Duration
 	AWSCfg      *aws.Config
 }
 
@@ -148,7 +149,7 @@ func RunWithContext(ctx context.Context, opt Option) error {
 		return fmt.Errorf("failed to fetch metrics from CloudWatch: %w", err)
 	}
 	log.Printf("[debug] results %#v", results)
-	serviceMetrics, hostMetrics := buildMetrics(results)
+	serviceMetrics, hostMetrics := buildMetrics(opt, results)
 	log.Printf("[debug] service metrics %#v", serviceMetrics)
 	log.Printf("[debug] host metrics %#v", hostMetrics)
 
@@ -230,7 +231,7 @@ TIMESTAMP:
 	}
 }
 
-func buildMetrics(results map[Label]types.MetricDataResult) (serviceMetrics map[string][]*mackerel.MetricValue, hostMetrics []*mackerel.HostMetricValue) {
+func buildMetrics(opt Option, results map[Label]types.MetricDataResult) (serviceMetrics map[string][]*mackerel.MetricValue, hostMetrics []*mackerel.HostMetricValue) {
 	serviceMetrics = make(map[string][]*mackerel.MetricValue)
 	hostMetrics = make([]*mackerel.HostMetricValue, 0)
 	for label, r := range results {
@@ -242,7 +243,7 @@ func buildMetrics(results map[Label]types.MetricDataResult) (serviceMetrics map[
 			tsUnix, value := ts.Unix(), r.Values[i]
 			mv := &mackerel.MetricValue{
 				Name:  label.Name,
-				Time:  tsUnix,
+				Time:  tsUnix + int64(opt.TimeOffset.Seconds()),
 				Value: value,
 			}
 			if label.IsService() {
