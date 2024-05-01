@@ -15,10 +15,10 @@ test:
 	go vet ./...
 
 clean:
-	rm -f cmd/cw2mkr/cw2mkr dist/*
+	rm -rf cmd/cw2mkr/cw2mkr dist/*
 
-dist: test
-	goxz -pv=$(TAG) -os=darwin,linux -build-ldflags="-w -s" -arch=amd64 -d=dist ./cmd/cw2mkr
+packages:
+	goreleaser build --skip-validate --rm-dist
 
-release: dist
-	ghr -u fujiwara -r cloudwatch-to-mackerel $(TAG) dist/
+packages-snapshot:
+	goreleaser build --skip-validate --rm-dist --snapshot
