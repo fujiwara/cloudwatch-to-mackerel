@@ -8,8 +8,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
-  issues: read
+  contents: write
   packages: write
 
 jobs:
