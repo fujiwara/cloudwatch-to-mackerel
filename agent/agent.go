@@ -142,7 +142,7 @@ func RunWithContext(ctx context.Context, opt Option) error {
 	log.Printf("[debug] query %#v", qs)
 	results, err := fetchMetrics(ctx, opt, qs)
 	if err != nil {
-		return fmt.Errorf("failed to fetch metrics from CloudWatch", err)
+		return fmt.Errorf("failed to fetch metrics from CloudWatch: %w", err)
 	}
 	log.Printf("[debug] results %#v", results)
 	serviceMetrics, hostMetrics := buildMetrics(results)
