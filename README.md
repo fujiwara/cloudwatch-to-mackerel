@@ -26,17 +26,32 @@ $ cw2mkr metric-data-query.json
 
 ```
 Usage of cw2mkr:
+  -dump-metrics
+        dump metrics to stdout instead of posting to mackerel. env:CW2MKR_DUMP_METRICS
   -end-time int
-    	end time(unix) if negative, relative time from now
+        end time(unix) if negative, relative time from now. env:CW2MKR_END_TIME
   -log-level string
-    	log level (debug, info, warn, error) (default "warn")
+        log level (debug, info, warn, error) env:CW2MKR_LOG_LEVEL (default "info")
+  -query string
+        query content. env:CW2MKR_QUERY
+  -query-file string
+        query file path. env:CW2MKR_QUERY_FILE
   -start-time int
-    	start time(unix) if negative, relative time from now
+        start time(unix) if negative, relative time from now. env:CW2MKR_START_TIME
+  -version
+        show version
 ```
 
 Environment variable `AWS_REGION` and `MACKEREL_APIKEY` are required both.
 
 By the default, end-time is now, start-time is 3 min ago.
+
+Some flags can be set by environment variables. The following is an example.
+
+```console
+$ cw2mkr -query-file query.json
+$ CW2MKR_QUERY_FILE=query.json cw2mkr
+```
 
 ## Usage (as library)
 
@@ -90,7 +105,20 @@ query := []byte(`
 err := agent.Run(agent.Option{Query: query})
 ```
 
-See [godoc](https://godoc.org/github.com/fujiwara/cloudwatch-to-mackerel/agent) in details.
+See [pkg.go.dev](https://pkg.go.dev/github.com/fujiwara/cloudwatch-to-mackerel/agent) in details.
+
+## Usage (Lambda)
+
+A `cw2mkr` binary can be used as an AWS Lambda function.
+
+1. Rename `cw2mkr` binary to `bootstrap`.
+2. Create a zip archive with `bootstrap` and `metric-data-query.json`.
+3. Upload the zip archive to AWS Lambda.
+4. Invoke the Lambda function.
+
+You can set flags by environment variables (`CW2MKR_QUERY_FILE` etc.).
+
+Supported runtime is `provided.al2` and `provided.al2023`.
 
 ### Query format
 
