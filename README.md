@@ -122,6 +122,8 @@ You can set flags by environment variables (`CW2MKR_QUERY_FILE` etc.).
 
 Supported runtime is `provided.al2` and `provided.al2023`.
 
+If the binary name is "cw2mkr", cw2mkr runs as a CLI command whenever it is executed on a Lambda environment or not.
+
 ### Query format
 
 Same as [MetricDataQuery](https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_MetricDataQuery.html) JSON format.
