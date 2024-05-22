@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -58,7 +59,7 @@ func run() error {
 	}
 	var startTimeFunc, endTimeFunc func() time.Time
 	if startTime > 0 {
-		startTimeFunc = func () time.Time {
+		startTimeFunc = func() time.Time {
 			return time.Unix(startTime, 0)
 		}
 	} else if startTime <= 0 {
@@ -97,6 +98,15 @@ func run() error {
 			return err
 		}
 		opt.Query = q
+	}
+
+	// to backward compatibility, run as CLI if binary name is cw2mkr
+	// whenever it is in lambda environment or not.
+	if bin, err := os.Executable(); err == nil && filepath.Base(bin) == "cw2mkr" {
+		log.Println("[debug] running as cw2mkr")
+		opt.StartTime = startTimeFunc()
+		opt.EndTime = endTimeFunc()
+		return agent.RunWithContext(context.TODO(), opt)
 	}
 
 	lamblocal.CLISrc = strings.NewReader("{}") // empty payload
