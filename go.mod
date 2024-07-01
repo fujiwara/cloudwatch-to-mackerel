@@ -12,7 +12,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/logutils v1.0.0
 	github.com/mackerelio/mackerel-client-go v0.31.0
-	github.com/shogo82148/go-retry v1.2.0
+	github.com/shogo82148/go-retry v1.3.1
 )
 
 require (
